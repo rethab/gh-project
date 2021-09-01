@@ -1,8 +1,8 @@
 # gh project
 
-⚠️  _very much work in progress_  ⚠️
+⚠️ _very much work in progress_ ⚠️
 
-ℹ️   contributions welcome
+ℹ️ contributions welcome
 
 A [GitHub CLI](https://cli.github.com/) extension to work with projects.
 
