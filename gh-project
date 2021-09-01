@@ -1,0 +1,40 @@
+#!/bin/bash
+set -e
+
+cmd=$1
+
+PREVIEW_HEADER='Accept: application/vnd.github.inertia-preview+json'
+
+list_projects() {
+  TEMPLATE='{{tablerow "ID" "Name" "URL"}}{{range .}}{{tablerow .id .name .html_url}}{{end}}'
+  exec gh api -H "$PREVIEW_HEADER" "orgs/{owner}/projects" --template="$TEMPLATE"
+}
+
+list_columns() {
+  local project_id="$1"
+  TEMPLATE='{{tablerow "ID" "Name" }}{{range .}}{{tablerow .id .name }}{{end}}'
+  exec gh api -H "$PREVIEW_HEADER" "projects/${project_id}/columns" --template="$TEMPLATE"
+}
+
+show_help() {
+  echo "Available commands:"
+  printf "  list\t\t\t\tlist projects in org\n"
+  printf "  list-columns <PROJECT_ID>\tlist columns in project\n"
+}
+
+
+case "$cmd" in
+  list)
+    list_projects
+    ;;
+  list-columns)
+    project_id=$2
+    [[ -z "$project_id" ]] && { echo "Missing project_id"; exit 1; }
+    list_columns "$project_id"
+    ;;
+  *)
+    echo "Invalid command '$cmd'"
+    show_help
+    exit 1
+    ;;
+esac
