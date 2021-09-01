@@ -2,10 +2,12 @@
 set -e
 
 cmd=$1
+shift
 
 list_projects() {
+  local owner=$1
   TEMPLATE='{{tablerow "ID" "Name" "URL"}}{{range .}}{{tablerow .id .name .html_url}}{{end}}'
-  exec gh api --preview inertia "orgs/{owner}/projects" --template="$TEMPLATE"
+  exec gh api --preview inertia "orgs/${owner}/projects" --template="$TEMPLATE"
 }
 
 list_columns() {
@@ -29,24 +31,48 @@ create_card() {
 }
 
 show_help() {
-  echo "Available commands:"
-  printf "  list\t\t\t\t\t\tlist projects in org\n"
+  echo "Work with GitHub Projects"
+  echo ""
+  echo "USAGE"
+  echo "  gh project <command> [flags]"
+  echo ""
+  echo "CORE COMMANDS"
+  printf "  list\t\t\t\t\t\tlist projects\n"
   printf "  list-columns <PROJECT_ID>\t\t\tlist columns in project\n"
   printf "  create-card <COLUMN_ID> <ISSUE_REPO> <TITLE>\tcreate new issue in ISSUE_REPO and add it as card to COLUMN_ID\n"
+  echo ""
+  echo "INHERITED FLAGS"
+  echo "  --help Show help for command"
+  echo ""
+  echo "EXAMPLES"
+  echo "  $ gh project list"
 }
 
 
 case "$cmd" in
   list)
-    list_projects
+    owner='{owner}'
+    while [ "${1:-}" != "" ]; do
+        case "$1" in
+            -o|--owner)
+                owner="$2"
+                shift 2
+                ;;
+            *)
+                echo "Unexpected argument: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+    list_projects "$owner"
     ;;
   list-columns)
-    project_id=$2
+    project_id=$1
     [[ -z "$project_id" ]] && { echo "Missing project_id"; exit 1; }
     list_columns "$project_id"
     ;;
   create-card)
-    shift
     column_id=$1
     shift
     issue_repo=$1
