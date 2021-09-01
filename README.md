@@ -17,3 +17,4 @@ Install this extension with `gh extension install rethab/gh-project`.
 
 - `list` list projects in org
 - `list-columns <PROJECT_ID>` list columns in project
+- `create-card <COLUMN_ID> <ISSUE_REPO> <TITLE>` create new issue in ISSUE_REPO and add it as card to COLUMN_ID

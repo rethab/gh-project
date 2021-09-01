@@ -3,23 +3,36 @@ set -e
 
 cmd=$1
 
-PREVIEW_HEADER='Accept: application/vnd.github.inertia-preview+json'
-
 list_projects() {
   TEMPLATE='{{tablerow "ID" "Name" "URL"}}{{range .}}{{tablerow .id .name .html_url}}{{end}}'
-  exec gh api -H "$PREVIEW_HEADER" "orgs/{owner}/projects" --template="$TEMPLATE"
+  exec gh api --preview inertia "orgs/{owner}/projects" --template="$TEMPLATE"
 }
 
 list_columns() {
   local project_id="$1"
   TEMPLATE='{{tablerow "ID" "Name" }}{{range .}}{{tablerow .id .name }}{{end}}'
-  exec gh api -H "$PREVIEW_HEADER" "projects/${project_id}/columns" --template="$TEMPLATE"
+  exec gh api --preview inertia "projects/${project_id}/columns" --template="$TEMPLATE"
+}
+
+create_card() {
+  local column_id="$1"
+  shift
+  local issue_repo="$1"
+  shift
+  local title=$*
+
+  issue_id=$(gh api "/repos/{owner}/${issue_repo}/issues" -f title="$title" --jq '.id')
+
+  content_url=$(gh api --preview inertia "/projects/columns/${column_id}/cards" -F content_id="$issue_id" -f content_type=Issue --jq '.content_url')
+
+  echo "$content_url" | sed s/api.// | sed s-repos/--
 }
 
 show_help() {
   echo "Available commands:"
-  printf "  list\t\t\t\tlist projects in org\n"
-  printf "  list-columns <PROJECT_ID>\tlist columns in project\n"
+  printf "  list\t\t\t\t\t\tlist projects in org\n"
+  printf "  list-columns <PROJECT_ID>\t\t\tlist columns in project\n"
+  printf "  create-card <COLUMN_ID> <ISSUE_REPO> <TITLE>\tcreate new issue in ISSUE_REPO and add it as card to COLUMN_ID\n"
 }
 
 
@@ -31,6 +44,22 @@ case "$cmd" in
     project_id=$2
     [[ -z "$project_id" ]] && { echo "Missing project_id"; exit 1; }
     list_columns "$project_id"
+    ;;
+  create-card)
+    shift
+    column_id=$1
+    shift
+    issue_repo=$1
+    shift
+    title=$*
+
+    [[ -z "$column_id" ]] && { echo "Missing column_id"; exit 1; }
+    [[ -z "$issue_repo" ]] && { echo "Missing issue_repo"; exit 1; }
+    [[ -z "$title" ]] && { echo "Missing title"; exit 1; }
+    create_card "$column_id" "$issue_repo" "$title"
+    ;;
+  --help)
+    show_help
     ;;
   *)
     echo "Invalid command '$cmd'"
