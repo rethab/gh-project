@@ -12,7 +12,6 @@ Make sure you have at least version 2 of the GitHub CLI installed.
 
 Install this extension with `gh extension install rethab/gh-project`.
 
-
 ## Available Commands
 
 - `list` list projects in org
