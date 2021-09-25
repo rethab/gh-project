@@ -10,24 +10,79 @@ list_projects() {
   exec gh api --preview inertia "orgs/${owner}/projects" --template="$TEMPLATE"
 }
 
+list_projects_help() {
+  echo "List GitHub projects"
+  echo ""
+  echo "USAGE"
+  echo "  gh project list [flags]"
+  echo ""
+  echo "FLAGS"
+  printf "  -o, --owner owner\tOwner/organization to list the projects for\n"
+  echo ""
+  echo "INHERITED FLAGS"
+  echo "  --help Show help for command"
+  echo ""
+  echo "EXAMPLES"
+  echo "  $ gh project list"
+}
+
 list_columns() {
   local project_id="$1"
   TEMPLATE='{{tablerow "ID" "Name" }}{{range .}}{{tablerow .id .name }}{{end}}'
   exec gh api --preview inertia "projects/${project_id}/columns" --template="$TEMPLATE"
 }
 
+list_columns_help() {
+  echo "List columns in a project"
+  echo ""
+  echo "USAGE"
+  echo "  gh project list-columns [flags]"
+  echo ""
+  echo "FLAGS"
+  printf "  -p, --project id\tId of the project. Use the \"list\" command to show projects\n"
+  echo ""
+  echo "INHERITED FLAGS"
+  echo "  --help Show help for command"
+  echo ""
+  echo "EXAMPLES"
+  echo "  $ gh project list-columns --project 12789786"
+}
+
 create_card() {
+  local owner="$1"
+  shift
   local column_id="$1"
   shift
   local issue_repo="$1"
   shift
   local title=$*
 
-  issue_id=$(gh api "/repos/{owner}/${issue_repo}/issues" -f title="$title" --jq '.id')
+  issue_id=$(gh api "/repos/${owner}/${issue_repo}/issues" -f title="$title" --jq '.id')
 
   content_url=$(gh api --preview inertia "/projects/columns/${column_id}/cards" -F content_id="$issue_id" -f content_type=Issue --jq '.content_url')
 
   echo "$content_url" | sed s/api.// | sed s-repos/--
+}
+
+create_card_help() {
+  echo "Create a new card in a project"
+  echo ""
+  echo "The content of a card is based on an issue, which is going to be created as part of this command."
+  echo ""
+  echo "USAGE"
+  echo "  gh project create-card [flags]"
+  echo ""
+  echo "FLAGS"
+  printf "  -o, --owner owner \t\tOwner/organization to create the card in. Defaults to the owner of the current repository.\n"
+  printf "  -c, --column id \t\tColumn in which to create card. Use \"list-column\" to show columns\n"
+  printf "  -r, --issue-repository name\tName of the repository in which to create the issue\n"
+  printf "  -t, --title string\t\tTitle of the card\n"
+  echo ""
+  echo "INHERITED FLAGS"
+  echo "  --help Show help for command"
+  echo ""
+  echo "EXAMPLES"
+  echo "  $ gh project create-card --column 1489862 --issue-repository backend-service --title \"implement new feature\""
 }
 
 show_help() {
@@ -37,15 +92,24 @@ show_help() {
   echo "  gh project <command> [flags]"
   echo ""
   echo "CORE COMMANDS"
-  printf "  list\t\t\t\t\t\tlist projects\n"
-  printf "  list-columns <PROJECT_ID>\t\t\tlist columns in project\n"
-  printf "  create-card <COLUMN_ID> <ISSUE_REPO> <TITLE>\tcreate new issue in ISSUE_REPO and add it as card to COLUMN_ID\n"
+  printf "  list\t\tList projects\n"
+  printf "  list-columns\tList columns in project\n"
+  printf "  create-card\tCreate a new issue and add it as a card to a column\n"
+  echo ""
+  echo "SHOW COMMAND HELP AND USAGE"
+  echo "  $ gh project <command> --help"
   echo ""
   echo "INHERITED FLAGS"
   echo "  --help Show help for command"
   echo ""
   echo "EXAMPLES"
   echo "  $ gh project list"
+}
+
+require_arg() {
+  local flag="$1"
+  echo "$flag requires an argument"
+  exit 1
 }
 
 
@@ -56,7 +120,11 @@ case "$cmd" in
         case "$1" in
             -o|--owner)
                 owner="$2"
-                shift 2
+                shift 2 || require_arg "owner"
+                ;;
+            -h|--help)
+                list_projects_help
+                exit 0
                 ;;
             *)
                 echo "Unexpected argument: $1"
@@ -68,21 +136,62 @@ case "$cmd" in
     list_projects "$owner"
     ;;
   list-columns)
-    project_id=$1
-    [[ -z "$project_id" ]] && { echo "Missing project_id"; exit 1; }
+    while [ "${1:-}" != "" ]; do
+        case "$1" in
+            -p|--project)
+                project_id="$2"
+                shift 2 || require_arg "project"
+                ;;
+            -h|--help)
+                list_columns_help
+                exit 0
+                ;;
+            *)
+                echo "Unexpected argument: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+    [[ -z "$project_id" ]] && { echo "Missing project"; exit 1; }
     list_columns "$project_id"
     ;;
   create-card)
-    column_id=$1
-    shift
-    issue_repo=$1
-    shift
-    title=$*
+    owner='{owner}'
+    while [ "${1:-}" != "" ]; do
+        case "$1" in
+            -o|--owner)
+                owner="$2"
+                shift 2 || require_arg "owner"
+                ;;
+            -c|--column)
+                column_id="$2"
+                shift 2 || require_arg "column"
+                ;;
+            -r|--issue-repository)
+                issue_repository="$2"
+                shift 2 || require_arg "repository"
+                ;;
+            -t|--title)
+                title="$2"
+                shift 2 || require_arg "title"
+                ;;
+            -h|--help)
+                create_card_help
+                exit 0
+                ;;
+            *)
+                echo "Unexpected argument: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
 
-    [[ -z "$column_id" ]] && { echo "Missing column_id"; exit 1; }
-    [[ -z "$issue_repo" ]] && { echo "Missing issue_repo"; exit 1; }
+    [[ -z "$column_id" ]] && { echo "Missing column"; exit 1; }
+    [[ -z "$issue_repository" ]] && { echo "Missing issue-repository"; exit 1; }
     [[ -z "$title" ]] && { echo "Missing title"; exit 1; }
-    create_card "$column_id" "$issue_repo" "$title"
+    create_card "$owner" "$column_id" "$issue_repository" "$title"
     ;;
   --help)
     show_help
