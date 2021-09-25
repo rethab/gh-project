@@ -5,25 +5,32 @@ cmd=$1
 shift
 
 list_projects() {
-  local owner=$1
+  local path=$1
   TEMPLATE='{{tablerow "ID" "Name" "URL"}}{{range .}}{{tablerow .id .name .html_url}}{{end}}'
-  exec gh api --preview inertia "orgs/${owner}/projects" --template="$TEMPLATE"
+  exec gh api --preview inertia "${path}/projects" --template="$TEMPLATE"
 }
 
 list_projects_help() {
-  echo "List GitHub projects"
+  echo "List projects from an organisation, a user or a repository"
+  echo ""
+  echo "Without flags, projects from the current repository are listed"
   echo ""
   echo "USAGE"
   echo "  gh project list [flags]"
   echo ""
   echo "FLAGS"
-  printf "  -o, --owner owner\tOwner/organization to list the projects for\n"
+  printf "  --org organisation\tList projects from organisation\n"
+  printf "  -u, --user user\tList projects from user\n"
+  printf "  -o, --owner owner\tList projects from owner (requires repository)\n"
+  printf "  -r, --repository repository\tList projects from repository (requires owner)\n"
   echo ""
   echo "INHERITED FLAGS"
   echo "  --help Show help for command"
   echo ""
   echo "EXAMPLES"
   echo "  $ gh project list"
+  echo "  $ gh project list --org my-corporation"
+  echo "  $ gh project list --owner rethab --repository gh-project"
 }
 
 list_columns() {
@@ -140,12 +147,23 @@ require_arg() {
 
 case "$cmd" in
   list)
-    owner='{owner}'
     while [ "${1:-}" != "" ]; do
         case "$1" in
+            -u|--user)
+                user="$2"
+                shift 2 || require_arg "user"
+                ;;
+            --org)
+                org="$2"
+                shift 2 || require_arg "org"
+                ;;
             -o|--owner)
                 owner="$2"
                 shift 2 || require_arg "owner"
+                ;;
+            -r|--repository)
+                repository="$2"
+                shift 2 || require_arg "repository"
                 ;;
             -h|--help)
                 list_projects_help
@@ -158,7 +176,20 @@ case "$cmd" in
                 ;;
         esac
     done
-    list_projects "$owner"
+
+    if [[ -n "$user" ]]; then
+      path="/users/$user"
+      [[ -n "$org$owner$repository" ]] && { echo "invalid flags in combination with user"; exit 1; }
+    elif [[ -n "$org" ]]; then
+      path="/orgs/$org"
+      [[ -n "$owner$repository" ]] && { echo "invalid flags in combination with org"; exit 1; }
+    elif [[ -n "$owner" && -n "$repository" ]]; then
+      path="/repos/$owner/$repository"
+    else
+      path="/repos/{owner}/{repo}"
+    fi
+
+    list_projects "$path"
     ;;
   list-columns)
     while [ "${1:-}" != "" ]; do
