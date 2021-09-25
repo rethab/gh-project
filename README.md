@@ -22,6 +22,7 @@ USAGE
 CORE COMMANDS
   list		List projects
   list-columns	List columns in project
+  list-cards	List cards in a column
   create-card	Create a new issue and add it as a card to a column
 
 SHOW COMMAND HELP AND USAGE
