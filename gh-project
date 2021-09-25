@@ -48,6 +48,30 @@ list_columns_help() {
   echo "  $ gh project list-columns --project 12789786"
 }
 
+list_cards() {
+  local column_id="$1"
+  shift
+
+  TEMPLATE='{{tablerow "ID" "Note" }}{{range .}}{{tablerow .id .note }}{{end}}'
+  exec gh api "/projects/columns/${column_id}/cards" --template="$TEMPLATE"
+}
+
+list_cards_help() {
+  echo "List cards in a column"
+  echo ""
+  echo "USAGE"
+  echo "  gh project list-cards [flags]"
+  echo ""
+  echo "FLAGS"
+  printf "  -c, --column id\tColumn from which to list cards. Use \"list-column\" to show columns\n"
+  echo ""
+  echo "INHERITED FLAGS"
+  echo "  --help Show help for command"
+  echo ""
+  echo "EXAMPLES"
+  echo "  $ gh project list-cards --column 1489862"
+}
+
 create_card() {
   local owner="$1"
   shift
@@ -94,6 +118,7 @@ show_help() {
   echo "CORE COMMANDS"
   printf "  list\t\tList projects\n"
   printf "  list-columns\tList columns in project\n"
+  printf "  list-cards\tList cards in a column\n"
   printf "  create-card\tCreate a new issue and add it as a card to a column\n"
   echo ""
   echo "SHOW COMMAND HELP AND USAGE"
@@ -155,6 +180,29 @@ case "$cmd" in
     done
     [[ -z "$project_id" ]] && { echo "Missing project"; exit 1; }
     list_columns "$project_id"
+    ;;
+  list-cards)
+    owner='{owner}'
+    while [ "${1:-}" != "" ]; do
+        case "$1" in
+            -c|--column)
+                column_id="$2"
+                shift 2 || require_arg "column"
+                ;;
+            -h|--help)
+                list_cards_help
+                exit 0
+                ;;
+            *)
+                echo "Unexpected argument: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+
+    [[ -z "$column_id" ]] && { echo "Missing column"; exit 1; }
+    list_cards "$column_id"
     ;;
   create-card)
     owner='{owner}'
