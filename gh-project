@@ -116,6 +116,37 @@ create_card_help() {
   echo "  $ gh project create-card --column 1489862 --issue-repository backend-service --title \"implement new feature\""
 }
 
+move_card() {
+  local card_id="$1"
+  local position="$2"
+  local column_id="$3"
+
+  if [ -z "$column_id" ]; then
+    exec gh api "/projects/columns/cards/$card_id/moves" -f "position=$position"
+  else
+    exec gh api "/projects/columns/cards/$card_id/moves" -f "position=$position" -F "column_id=$column_id"
+  fi
+}
+
+move_card_help() {
+  echo "Move a card within a column or to a different column"
+  echo ""
+  echo "USAGE"
+  echo "  gh project move-card [flags]"
+  echo ""
+  echo "FLAGS"
+  printf "  -c, --card card_id\t\tCard to move. Use \"list-cards\" to show cards\n"
+  printf "  -p, --position position\tPosition to move the card to. Options: top, bottom, after:<card_id>. Defaults to top\n"
+  printf "  --column column_id\t\tID of the column to move to. If omitted, card is moved within column\n"
+  echo ""
+  echo "INHERITED FLAGS"
+  echo "  --help Show help for command"
+  echo ""
+  echo "EXAMPLES"
+  echo "  $ gh project move-card --card 69500449 --position top --column 16122294"
+}
+
+
 show_help() {
   echo "Work with GitHub Projects"
   echo ""
@@ -127,6 +158,7 @@ show_help() {
   printf "  list-columns\tList columns in project\n"
   printf "  list-cards\tList cards in a column\n"
   printf "  create-card\tCreate a new issue and add it as a card to a column\n"
+  printf "  move-card\tMove card to a different column or within a column\n"
   echo ""
   echo "SHOW COMMAND HELP AND USAGE"
   echo "  $ gh project <command> --help"
@@ -271,6 +303,37 @@ case "$cmd" in
     [[ -z "$issue_repository" ]] && { echo "Missing issue-repository"; exit 1; }
     [[ -z "$title" ]] && { echo "Missing title"; exit 1; }
     create_card "$owner" "$column_id" "$issue_repository" "$title"
+    ;;
+  move-card)
+    while [ "${1:-}" != "" ]; do
+        case "$1" in
+            -c|--card)
+                card_id="$2"
+                shift 2 || require_arg "card"
+                ;;
+            -p|--position)
+                position="$2"
+                shift 2 || require_arg "position"
+                ;;
+            --column)
+                column_id="$2"
+                shift 2 || require_arg "column"
+                ;;
+            -h|--help)
+                move_card_help
+                exit 0
+                ;;
+            *)
+                echo "Unexpected argument: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+
+    [[ -z "$card_id" ]] && { echo "Missing card"; exit 1; }
+    [[ -z "$position" ]] && { position="top"; }
+    move_card "$card_id" "$position" "$column_id"
     ;;
   --help)
     show_help

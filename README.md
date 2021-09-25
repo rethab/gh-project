@@ -13,7 +13,6 @@ Install this extension with `gh extension install rethab/gh-project`.
 ## Synopsis
 
 ```bash
-gh project --help
 Work with GitHub Projects
 
 USAGE
@@ -24,6 +23,7 @@ CORE COMMANDS
   list-columns	List columns in project
   list-cards	List cards in a column
   create-card	Create a new issue and add it as a card to a column
+  move-card	Move card to a different column or within a column
 
 SHOW COMMAND HELP AND USAGE
   $ gh project <command> --help
