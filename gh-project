@@ -86,9 +86,16 @@ create_card() {
   shift
   local issue_repo="$1"
   shift
+  local label="$1"
+  shift
   local title=$*
 
-  issue_id=$(gh api "/repos/${owner}/${issue_repo}/issues" -f title="$title" --jq '.id')
+  if [[ -n $label ]]; then
+    label="\"${label//,/\",\"}\""
+  fi
+
+  issue_payload="{\"title\": \"$title\", \"labels\": [$label]}"
+  issue_id=$(echo "$issue_payload" | gh api "/repos/${owner}/${issue_repo}/issues" --input - --jq '.id')
 
   content_url=$(gh api --preview inertia "/projects/columns/${column_id}/cards" -F content_id="$issue_id" -f content_type=Issue --jq '.content_url')
 
@@ -107,13 +114,14 @@ create_card_help() {
   printf "  -o, --owner owner \t\tOwner/organization to create the card in. Defaults to the owner of the current repository.\n"
   printf "  -c, --column id \t\tColumn in which to create card. Use \"list-column\" to show columns\n"
   printf "  -r, --issue-repository name\tName of the repository in which to create the issue\n"
+  printf "  -l, --label string\t\tAdd labels by name\n"
   printf "  -t, --title string\t\tTitle of the card\n"
   echo ""
   echo "INHERITED FLAGS"
   echo "  --help Show help for command"
   echo ""
   echo "EXAMPLES"
-  echo "  $ gh project create-card --column 1489862 --issue-repository backend-service --title \"implement new feature\""
+  echo "  $ gh project create-card --column 1489862 --issue-repository backend-service --label \"help wanted\" --title \"implement new feature\""
 }
 
 move_card() {
@@ -203,7 +211,7 @@ case "$cmd" in
                 ;;
             *)
                 echo "Unexpected argument: $1"
-                show_help
+                list_projects_help
                 exit 1
                 ;;
         esac
@@ -236,7 +244,7 @@ case "$cmd" in
                 ;;
             *)
                 echo "Unexpected argument: $1"
-                show_help
+                list_columns_help
                 exit 1
                 ;;
         esac
@@ -258,7 +266,7 @@ case "$cmd" in
                 ;;
             *)
                 echo "Unexpected argument: $1"
-                show_help
+                list_cards_help
                 exit 1
                 ;;
         esac
@@ -269,6 +277,7 @@ case "$cmd" in
     ;;
   create-card)
     owner='{owner}'
+    labels=''
     while [ "${1:-}" != "" ]; do
         case "$1" in
             -o|--owner)
@@ -283,6 +292,10 @@ case "$cmd" in
                 issue_repository="$2"
                 shift 2 || require_arg "repository"
                 ;;
+            -l|--label)
+                labels="$2"
+                shift 2 || require_arg "label"
+                ;;
             -t|--title)
                 title="$2"
                 shift 2 || require_arg "title"
@@ -293,7 +306,7 @@ case "$cmd" in
                 ;;
             *)
                 echo "Unexpected argument: $1"
-                show_help
+                create_card_help
                 exit 1
                 ;;
         esac
@@ -302,7 +315,7 @@ case "$cmd" in
     [[ -z "$column_id" ]] && { echo "Missing column"; exit 1; }
     [[ -z "$issue_repository" ]] && { echo "Missing issue-repository"; exit 1; }
     [[ -z "$title" ]] && { echo "Missing title"; exit 1; }
-    create_card "$owner" "$column_id" "$issue_repository" "$title"
+    create_card "$owner" "$column_id" "$issue_repository" "$labels" "$title"
     ;;
   move-card)
     while [ "${1:-}" != "" ]; do
