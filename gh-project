@@ -114,7 +114,7 @@ create_card_help() {
   printf "  -o, --owner owner \t\tOwner/organization to create the card in. Defaults to the owner of the current repository.\n"
   printf "  -c, --column id \t\tColumn in which to create card. Use \"list-column\" to show columns\n"
   printf "  -r, --issue-repository name\tName of the repository in which to create the issue\n"
-  printf "  -l, --label string\t\tAdd labels by name\n"
+  printf "  -l, --label string\t\tAdd labels by name (separate multiple labels with a comma)\n"
   printf "  -t, --title string\t\tTitle of the card\n"
   echo ""
   echo "INHERITED FLAGS"
